@@ -8,6 +8,23 @@ cd Torch-Automatic-Distributed-Neural-Network
 luarocks make 
 ```
 
-# Test
+## To use
 
-# Parameters
+Simply convert your network model to CUDA by calling `:cuda()`:
+
+```lua
+local model = nn.Sequential()
+
+```
+
+... and similarly for your tensors:
+
+## Training Concepts
+
+__Performance__
+
+* data should be 
+
+... this will allocate 
+
+
