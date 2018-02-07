@@ -1,6 +1,6 @@
 local datamodule = {}
 
-
+local dataShuffle = false  --shuffle data when splitting
 ------------------------------------------------------------------
 -- Name: 	parallelize
 -- Inputs: 	data array, targets array, ANN model, data array size, mpi, mpinn, batchSize
@@ -36,6 +36,7 @@ function datamodule.parallelize( data, targets, model, size, mpi_obj, mpinn_obj,
 	local newtargets = datamodule.data_parallel(targets, size, mpi_obj)
 	
 	-- determine speed
+	-- this option removed from current implementation
 	-- local speed = datamodule.comm_speed(data, targets, model, mpi_obj, mpinn_obj)
 	
 	-- determine optimal batch size
@@ -61,14 +62,14 @@ function datamodule.optimize_sync( speed, size, model, mpinn, mpi, batchSize )
 	
 	-- if batchSize is not given it will be optimized
 	if (batchSize == nil) then
-		batchSize = 100
-
-		if (speed < 0.05 and size < 1000) then
+		if (size < 1000) then
 			batchSize = 1
-		elseif (speed < 0.1 and size < 2500) then
+		elseif (size < 2500) then
 			batchSize = 10
-		elseif (speed < 0.2 and size < 5000) then
+		elseif (size < 5000) then
 			batchSize = 50
+		else
+			batchSize = 100
 		end
 	end
 	
@@ -96,11 +97,9 @@ function datamodule.optimize_sync( speed, size, model, mpinn, mpi, batchSize )
 		
 		-- sync and shutdown when dataset is complete
 		if (self.sync_counter == size) then
-			--print("Rank: " .. mpi.rank() .. " training complete");
 			mpinn.synchronizeGradients(model)
 			mpi.stop()
 		elseif (self.sync_counter % batchSize == 0) then -- sync when batch is complete 
-			--print("Rank: " .. mpi.rank() .. " backward batch complete, count: " .. self.sync_counter);
 			mpinn.synchronizeGradients(model)
 		end
 		self.sync_counter = self.sync_counter + 1
@@ -111,27 +110,71 @@ function datamodule.optimize_sync( speed, size, model, mpinn, mpi, batchSize )
 	end
 	
 	--This function needs to be overriden to allow for stochastic gradient training
-	function nn.Module:accUpdateGradParameters(input, gradOutput, lr)
-	   if self.shared then
-		  self:sharedAccUpdateGradParameters(input, gradOutput, lr)
-	   else
-		  self:defaultAccUpdateGradParameters(input, gradOutput, lr)
+	function nn.StochasticGradient:train(dataset)
+	   local iteration = 1
+	   local currentLearningRate = self.learningRate
+	   local module = self.module
+	   local criterion = self.criterion
+
+	   local shuffledIndices = torch.randperm(dataset:size(), 'torch.LongTensor')
+	   if not self.shuffleIndices then
+		  for t = 1,dataset:size() do
+			 shuffledIndices[t] = t
+		  end
 	   end
-	   -- additional sync functionality added
-		-- * 
-		if (self.sync_counter == nil) then
-			self.sync_counter = 1
-		end
-		
-		-- sync and shutdown when dataset is complete
-		if (self.sync_counter == size) then
-			mpinn.synchronizeGradients(model)
-		elseif (self.sync_counter % batchSize == 0) then -- sync when batch is complete 
-			mpinn.synchronizeGradients(model)
-		end
-		self.sync_counter = self.sync_counter + 1
-		-- *
-		-- end of additional functionality
+
+	   print("# StochasticGradient: training")
+
+	   while true do
+		  local currentError = 0
+		  for t = 1,dataset:size() do
+			 local example = dataset[shuffledIndices[t] ]
+			 local input = example[1]
+			 local target = example[2]
+
+			 currentError = currentError + criterion:forward(module:forward(input), target)
+
+			 module:updateGradInput(input, criterion:updateGradInput(module.output, target))
+			 module:accUpdateGradParameters(input, criterion.gradInput, currentLearningRate)
+			 
+			-- additional sync functionality added
+			-- * 
+			if (self.sync_counter == nil) then
+				self.sync_counter = 1
+			end
+			
+			-- sync and shutdown when dataset is complete
+			if (self.sync_counter == size) then
+				mpinn.synchronizeGradients(model)
+			elseif (self.sync_counter % batchSize == 0) then -- sync when batch is complete	
+				mpinn.synchronizeGradients(model)
+			end
+			self.sync_counter = self.sync_counter + 1
+			-- *
+			-- end of additional functionality
+
+			 if self.hookExample then
+				self.hookExample(self, example)
+			 end
+		  end
+
+		  currentError = currentError / dataset:size()
+
+		  if self.hookIteration then
+			 self.hookIteration(self, iteration, currentError)
+		  end
+
+		  if self.verbose then
+			 print("# current error = " .. currentError)
+		  end
+		  iteration = iteration + 1
+		  currentLearningRate = self.learningRate/(1+iteration*self.learningRateDecay)
+		  if self.maxIteration > 0 and iteration > self.maxIteration then
+			 print("# StochasticGradient: you have reached the maximum number of iterations")
+			 print("# training error = " .. currentError)
+			 break
+		  end
+	   end
 	end
 	
 	
@@ -155,9 +198,6 @@ function datamodule.data_parallel( data, size, mpi )
 	local remainder = 0
 	-- how many elements will be placed on each rank, remainder elements go to last rank
 	local stripe = ( size - ( size % mpi.size() ) ) / mpi.size()
-	--if (mpi.rank() == mpi.size() - 1 ) then -- if I am the last rank
-	--	remainder = size % mpi.size() 		-- only I get the remainder
-	--end
 	size = size - remainder
 	-- where will this rank's data start at
 	local start  = ( mpi.rank() * stripe ) + 1
@@ -168,6 +208,14 @@ function datamodule.data_parallel( data, size, mpi )
 	local newdata = {}
 	
 	newdata = data[{ {start,finish} } ]
+	
+	if dataShuffle then
+		local index = 1
+		for i = 1,size,mpi.size() do
+			newdata[ { { index,index } } ] = data[ { { i + mpi.rank(), i + mpi.rank() } } ]
+			index = index + 1
+		end
+	end
 	
 	print ("Rank: " .. mpi.rank() .. " Start Point: " .. start .. " End Point: " .. finish .. " Stripe: " .. stripe .. " Remainder: " .. remainder)
 	

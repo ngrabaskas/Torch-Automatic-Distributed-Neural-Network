@@ -6,9 +6,10 @@ local syncReshape = false  -- Experimental reshape all gather
 
 ------------------------------------------------------------------
 -- Name: 	Narrow Input
--- Inputs: 	
--- Outputs: 
--- Summary: 
+-- Inputs: 	Input array
+-- Outputs: Narrowed input array
+-- Summary: This function accepts the normal input array and returns the
+--			the reduced array that is specific to each node.
 --
 ------------------------------------------------------------------
 
@@ -21,9 +22,12 @@ end
 
 ------------------------------------------------------------------
 -- Name: 	Initial Linear Layer
--- Inputs: 	
--- Outputs: 
--- Summary: 
+-- Inputs: 	No additional input is required to use this layer
+-- Outputs: Standard output from nn.Linear is used
+-- Summary: These functions override the original and allow the input layer to
+--			be split over multiple nodes within the network. Output is then 
+--			Synchronized using allreduceTensor(). For the initial linear layer
+--			accGradParameters() input must also be narrowed.
 --
 ------------------------------------------------------------------
 
@@ -70,9 +74,12 @@ end
 
 ------------------------------------------------------------------
 -- Name: 	Base Linear Layer
--- Inputs: 	
--- Outputs: 
--- Summary: 
+-- Inputs: 	No additional input is required to use this layer
+-- Outputs: Standard output from nn.Linear is used
+-- Summary: These functions override the original and allow the input layer to
+--			be split over multiple nodes within the network. Output is then 
+--			Synchronized using allreduceTensor(). For base linear layer, 
+--			accGradParameters() input is not narrowed.
 --
 ------------------------------------------------------------------
 
@@ -113,9 +120,12 @@ end
 
 ------------------------------------------------------------------
 -- Name: 	Tanh Layer
--- Inputs: 	
--- Outputs: 
--- Summary: 
+-- Inputs: 	No additional input is required to use this layer
+-- Outputs: Standard output from nn.Tanh is used
+-- Summary: These functions narrow the self.output from updateGradInput()
+--			during backward propagation. Output from updateGradInput() is
+--			expanded for the above linear layer during backward propagation.
+--			An experiment allgather during this expansion can be turned on.
 --
 ------------------------------------------------------------------
 
@@ -165,9 +175,11 @@ end
 
 ------------------------------------------------------------------
 -- Name: 	Initial Reshape Layer
--- Inputs: 	
--- Outputs: 
--- Summary: 
+-- Inputs: 	No additional input is required to use this layer
+-- Outputs: Standard output from nn.Reshape is used
+-- Summary: The below functions narrows the input when Reshape.updateGradInput is
+-- 			used at the top of the network. This corresponds to the 
+--			narrowed out from the below linear layer's updateGradInput().
 --
 ------------------------------------------------------------------
 
@@ -215,9 +227,11 @@ end
 
 ------------------------------------------------------------------
 -- Name: 	Base Reshape Layer
--- Inputs: 	
--- Outputs: 
--- Summary: 
+-- Inputs: 	No additional input is required to use this layer
+-- Outputs: Standard output from nn.Reshape is used
+-- Summary: Output from updateGradInput() is expanded for the above linear 
+--			layer during backward propagation. An experiment allgather 
+--			during this expansion can be turned on.
 --
 ------------------------------------------------------------------
 
