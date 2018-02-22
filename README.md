@@ -4,6 +4,7 @@ Torch Automatic Distributed Neural Network (TAD-NN) training library. Built on t
 
 ## Before Installation
 Install [Torch 7.0](https://github.com/torch/torch7) and [TorchMPI](https://github.com/facebookresearch/TorchMPI)
+
 **Note:** TorchMPI must be build using OpenMPI 2.0.1
 
 ## Installing from source
