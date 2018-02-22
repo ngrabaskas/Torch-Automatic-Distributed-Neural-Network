@@ -1,11 +1,11 @@
 
 # Torch-Automatic-Distributed-Neural-Network
-Torch Automatic Distributed Neural Network (TAD-NN) training library. Built on top of TorchMPI this module will automatically parallelize neural network training.
+Torch Automatic Distributed Neural Network (TorchAD-NN) training library. Built on top of TorchMPI this module will automatically parallelize neural network training.
 
 ## Before Installation
 Install [Torch 7.0](https://github.com/torch/torch7) and [TorchMPI](https://github.com/facebookresearch/TorchMPI)
 
-**Note:** TorchMPI must be build using OpenMPI 2.0.1
+**Note:** TorchMPI must be built using OpenMPI 2.0.1
 
 ## Installing from source
 ```bash
@@ -14,7 +14,7 @@ cd Torch-Automatic-Distributed-Neural-Network
 luarocks make 
 ```
 
-## To use
+## To use Data Parallelism
 
 Load TorchAD-NN library 
 ```lua
@@ -46,6 +46,18 @@ This parallelize() function will split dataset evenly across all nodes in the MP
 To set synchronization manually use:
 ```lua 
 -- still need to implement
+```
+
+## To use Model Parallelism
+
+Load TorchAD-NN library 
+```lua
+require 'automatedparallelization'
+```
+
+Use new neural layer component names.
+```lua 
+-- insert example code
 ```
 
 ## Training Concepts
