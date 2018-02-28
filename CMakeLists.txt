@@ -9,4 +9,4 @@ ENDIF()
 FIND_PACKAGE(Torch REQUIRED)
 
 FILE(GLOB luasrc *.lua)
-ADD_TORCH_PACKAGE(torchad-nn "" "${luasrc}" "torchad-nn")
+ADD_TORCH_PACKAGE(torchad_nn "" "${luasrc}" "torchad_nn")

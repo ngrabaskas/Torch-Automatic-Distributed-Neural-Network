@@ -1,4 +1,4 @@
-package = "Torchad-nn"
+package = "torchad_nn"
 version = "scm-1"
 
 source = {

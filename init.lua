@@ -1,8 +1,8 @@
 require 'torch'
 
-local torchad-nn = {}
+local torchad_nn = {}
 
-torchad-nn.datamodule  = require 'torchad-nn.datamodule'
-torchad-nn.nodemodule  = require 'torchad-nn.nodemodule'
+torchad_nn.datamodule  = require 'torchad_nn.datamodule'
+torchad_nn.nodemodule  = require 'torchad_nn.nodemodule'
 
-return torchad-nn
+return torchad_nn
