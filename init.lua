@@ -1,8 +1,8 @@
 require 'torch'
 
-local automatedparallelization = {}
+local torchad-nn = {}
 
-automatedparallelization.datamodule  = require 'automatedparallelization.datamodule'
-automatedparallelization.nodemodule  = require 'automatedparallelization.nodemodule'
+torchad-nn.datamodule  = require 'torchad-nn.datamodule'
+torchad-nn.nodemodule  = require 'torchad-nn.nodemodule'
 
-return automatedparallelization
+return torchad-nn

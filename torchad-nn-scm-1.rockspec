@@ -1,17 +1,17 @@
-package = "automatedparallelization"
+package = "Torchad-nn"
 version = "scm-1"
 
 source = {
-   url = "git://github.com/ngrabaskas/automatedparallelization.torch",
+   url = "https://github.com/ngrabaskas/Torch-Automatic-Distributed-Neural-Network.git",
    tag = "master"
 }
 
 description = {
-   summary = "Automated Parallelization for Torch and TorchMPI",
+   summary = "Torch Automatic Distributed Neural Network (TorchAD-NN) training library. Built on top of TorchMPI this module will automatically parallelize neural network training.",
    detailed = [[
    	    Automated Parallelization for Torch and TorchMPI
    ]],
-   homepage = "https://github.com/ngrabaskas/automatedparallelization.torch"
+   homepage = "https://github.com/ngrabaskas/Torch-Automatic-Distributed-Neural-Network"
 }
 
 dependencies = {
