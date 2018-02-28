@@ -1,6 +1,8 @@
 local datamodule = {}
 
 local dataShuffle = false  --shuffle data when splitting
+local syncPrototype = true --use sync model prototype
+
 ------------------------------------------------------------------
 -- Name: 	parallelize
 -- Inputs: 	data array, targets array, ANN model, data array size, mpi, mpinn, batchSize
@@ -40,7 +42,9 @@ function datamodule.parallelize( data, targets, model, size, mpi_obj, mpinn_obj,
 	-- local speed = datamodule.comm_speed(data, targets, model, mpi_obj, mpinn_obj)
 	
 	-- determine optimal batch size
-	datamodule.optimize_sync(speed, dataSize, model, mpinn_obj, mpi_obj, batchSize)
+	if batchSize ~= -1 then 
+		datamodule.optimize_sync(speed, dataSize, model, mpinn_obj, mpi_obj, batchSize)
+	end
 	
 	-- ensure all ranks are complete before returning
 	mpi_obj.barrier()
@@ -94,13 +98,13 @@ function datamodule.optimize_sync( speed, size, model, mpinn, mpi, batchSize )
 		if (self.sync_counter == nil) then
 			self.sync_counter = 1;
 		end
-		
-		-- sync and shutdown when dataset is complete
-		if (self.sync_counter == size) then
-			mpinn.synchronizeGradients(model)
-			mpi.stop()
-		elseif (self.sync_counter % batchSize == 0) then -- sync when batch is complete 
-			mpinn.synchronizeGradients(model)
+		-- sync on batchSize and at the end of dataset
+		if (self.sync_counter % batchSize == 0) or (self.sync_counter == size) then -- sync when batch is complete 
+			if syncPrototype then
+				datamodule.synchronizeModel(model, mpi)
+			else
+				mpinn.synchronizeGradients(model)
+			end
 		end
 		self.sync_counter = self.sync_counter + 1
 		-- *
@@ -143,11 +147,13 @@ function datamodule.optimize_sync( speed, size, model, mpinn, mpi, batchSize )
 				self.sync_counter = 1
 			end
 			
-			-- sync and shutdown when dataset is complete
-			if (self.sync_counter == size) then
-				mpinn.synchronizeGradients(model)
-			elseif (self.sync_counter % batchSize == 0) then -- sync when batch is complete	
-				mpinn.synchronizeGradients(model)
+			-- sync on batchSize and at the end of dataset
+			if (self.sync_counter % batchSize == 0) or (self.sync_counter == size) then -- sync when batch is complete 
+				if syncPrototype then
+					datamodule.synchronizeModel(model, mpi)
+				else
+					mpinn.synchronizeGradients(model)
+				end
 			end
 			self.sync_counter = self.sync_counter + 1
 			-- *
@@ -181,6 +187,41 @@ function datamodule.optimize_sync( speed, size, model, mpinn, mpi, batchSize )
 	return batchSize
 end
 
+------------------------------------------------------------------
+-- Name: 	synchronizeModel
+-- Inputs: 	model, mpi handle
+-- Outputs: none
+-- Summary:	This function synchronizes model gradients and parameters
+--			using allreduceTensor and collective operation average.
+--
+------------------------------------------------------------------
+
+function datamodule.selectCollective(tensor, sync, collective, mpi)
+   local ttype = torch.type(tensor):find('Cuda') and 'gpu' or 'cpu'
+   if mpi.needInterNodeCollectives then
+	  return assert(mpi.collectiveSelector[ttype].multinode[sync][collective],
+	  'Could not find collective ' .. ttype .. ' multinode ' .. sync .. ' ' .. collective)
+   else
+	  return assert(mpi.collectiveSelector[ttype].singlenode[sync][collective],
+	  'Could not find collective ' .. ttype .. ' singlenode ' .. sync .. ' ' .. collective)
+   end
+end
+
+-- Synchronize model
+function datamodule.synchronizeModel(net, mpi)
+	if not net.parameters then return end
+	local p, g = net:parameters()
+	for i, w in ipairs(p) do
+		local allreduceTensor = datamodule.selectCollective(w, 'sync', 'allreduceTensor', mpi)
+		allreduceTensor(w)
+		w:div(mpi.size())
+	end
+	for i, gw in ipairs(g) do
+		local allreduceTensor = datamodule.selectCollective(gw, 'sync', 'allreduceTensor', mpi)
+		allreduceTensor(gw)
+		gw:div(mpi.size()) 
+	end
+end
 
 ------------------------------------------------------------------
 -- Name: 	data_parallel

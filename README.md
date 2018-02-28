@@ -1,6 +1,11 @@
 
+
 # Torch-Automatic-Distributed-Neural-Network
 Torch Automatic Distributed Neural Network (TorchAD-NN) training library. Built on top of TorchMPI this module will automatically parallelize neural network training.
+
+Main contribution is reducing the implementation complexity of data parallel neural network training by more than 90% and providing components, with near zero implementation complexity, to execute model parallel training on all or only select fully-connected neural layers.
+
+See Thesis **insert link**
 
 ## Before Installation
 Install [Torch 7.0](https://github.com/torch/torch7) and [TorchMPI](https://github.com/facebookresearch/TorchMPI)
@@ -33,7 +38,7 @@ size = data.size()
 
 ----------------------------------------------------------------------
 -- Call Automated Parallelization 
-data, labels, size = automation.parallelize( data, labels, model, size, nil, nil, batchSize) 
+data, labels, size = automation.parallelize(data, labels, model, size, nil, nil, batchSize) 
 
 ----------------------------------------------------------------------
 -- preprocess/normalize data
@@ -45,7 +50,7 @@ This parallelize() function will split dataset evenly across all nodes in the MP
 
 To set synchronization manually use:
 ```lua 
--- still need to implement
+-- insert example code
 ```
 
 ## To use Model Parallelism
