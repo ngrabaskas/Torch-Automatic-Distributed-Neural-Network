@@ -7,6 +7,7 @@ See Thesis **insert link**
 
 ## Before Installation
 Install [Torch 7.0](https://github.com/torch/torch7) and [TorchMPI](https://github.com/facebookresearch/TorchMPI)
+
 **Note:** TorchMPI must be built using OpenMPI 2.0.1
 
 Additional Dependencies
